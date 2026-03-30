@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuvem de Chuva - Números e Letras</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: #000000;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+
+        .container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            background: #000000;
+        }
+
+        /* Nuvem Branca - Sem Rosto */
+        .cloud {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 420px;
+            height: 220px;
+            z-index: 10;
+            animation: floatCloud 4s ease-in-out infinite;
+        }
+
+        .cloud-part {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .part1 {
+            width: 140px;
+            height: 140px;
+            left: 20px;
+            top: 50px;
+        }
+
+        .part2 {
+            width: 170px;
+            height: 170px;
+            left: 110px;
+            top: 30px;
+        }
+
+        .part3 {
+            width: 150px;
+            height: 150px;
+            left: 210px;
+            top: 45px;
+        }
+
+        .part4 {
+            width: 120px;
+            height: 120px;
+            left: 290px;
+            top: 70px;
+        }
+
+        .part5 {
+            width: 100px;
+            height: 100px;
+            left: -10px;
+            top: 75px;
+        }
+
+        .part6 {
+            width: 110px;
+            height: 110px;
+            left: 330px;
+            top: 95px;
+        }
+
+        @keyframes floatCloud {
+            0%, 100% {
+                transform: translateX(-50%) translateY(0px);
+            }
+            50% {
+                transform: translateX(-50%) translateY(-8px);
+            }
+        }
+
+        /* Letras e Números Caindo */
+        .falling-char {
+            position: absolute;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            pointer-events: none;
+            z-index: 5;
+            animation: fall linear forwards;
+            text-shadow: 0 0 5px rgba(0,200,255,0.5);
+            white-space: nowrap;
+        }
+
+        @keyframes fall {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(calc(100vh - 30px)) rotate(360deg);
+                opacity: 1;
+            }
+        }
+
+        /* Partículas no Chão */
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            z-index: 8;
+            animation: particleEffect 0.8s ease-out forwards;
+        }
+
+        @keyframes particleEffect {
+            0% {
+                transform: scale(0);
+                opacity: 0.8;
+            }
+            50% {
+                transform: scale(1);
+                opacity: 0.6;
+            }
+            100% {
+                transform: scale(0.3);
+                opacity: 0;
+            }
+        }
+
+        /* Contador */
+        .counter {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            color: #00ccff;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-family: monospace;
+            font-size: 14px;
+            z-index: 20;
+            border: 1px solid #00ccff;
+        }
+
+        .counter span {
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        /* Botão */
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 20;
+        }
+
+        button {
+            background: rgba(0,0,0,0.7);
+            color: #00ccff;
+            border: 1px solid #00ccff;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: monospace;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: rgba(0,200,255,0.2);
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Nuvem Branca sem rosto -->
+        <div class="cloud">
+            <div class="cloud-part part1"></div>
+            <div class="cloud-part part2"></div>
+            <div class="cloud-part part3"></div>
+            <div class="cloud-part part4"></div>
+            <div class="cloud-part part5"></div>
+            <div class="cloud-part part6"></div>
+        </div>
+
+        <!-- Contador -->
+        <div class="counter">
+            🌧️ Caindo: <span id="fallingCount">0</span> | ✨ Partículas: <span id="particleCount">0</span>
+        </div>
+
+        <!-- Controles -->
+        <div class="controls">
+            <button id="toggleRain">⏸️ Pausar</button>
+            <button id="clearParticles">💫 Limpar Partículas</button>
+        </div>
+    </div>
+
+    <script>
+        // Caracteres: números e letras
+        const numbers = '0123456789';
+        const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+        const allChars = numbers + letters;
+        
+        let rainInterval;
+        let isRaining = true;
+        let fallingCount = 0;
+        let particleCount = 0;
+        
+        const cloud = document.querySelector('.cloud');
+        
+        // Pegar posição da nuvem
+        function getCloudPosition() {
+            const rect = cloud.getBoundingClientRect();
+            return {
+                left: rect.left,
+                right: rect.right,
+                top: rect.top,
+                bottom: rect.bottom,
+                width: rect.width
+            };
+        }
+        
+        // Gerar caractere aleatório
+        function getRandomChar() {
+            return allChars[Math.floor(Math.random() * allChars.length)];
+        }
+        
+        // Criar partículas no chão
+        function createParticles(x, y, char) {
+            const numParticles = Math.floor(Math.random() * 8) + 5; // 5 a 12 partículas
+            
+            for (let i = 0; i < numParticles; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                
+                // Posição aleatória ao redor do ponto de impacto
+                const offsetX = (Math.random() - 0.5) * 40;
+                const offsetY = (Math.random() - 0.5) * 30;
+                particle.style.left = (x + offsetX) + 'px';
+                particle.style.top = (y + offsetY) + 'px';
+                
+                // Estilo da partícula
+                const size = Math.random() * 8 + 4;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                
+                // Se for número ou letra, cores diferentes
+                if (char >= '0' && char <= '9') {
+                    particle.style.backgroundColor = `rgba(0, 206, 209, ${Math.random() * 0.7 + 0.3})`;
+                    particle.style.boxShadow = '0 0 5px rgba(0,206,209,0.8)';
+                } else {
+                    particle.style.backgroundColor = `rgba(123, 104, 238, ${Math.random() * 0.7 + 0.3})`;
+                    particle.style.boxShadow = '0 0 5px rgba(123,104,238,0.8)';
+                }
+                
+                particle.style.borderRadius = '50%';
+                
+                // Animação personalizada
+                const duration = Math.random() * 0.6 + 0.4;
+                particle.style.animation = `particleEffect ${duration}s ease-out forwards`;
+                
+                document.querySelector('.container').appendChild(particle);
+                particleCount++;
+                updateParticleCount();
+                
+                // Remover partícula após animação
+                setTimeout(() => {
+                    particle.remove();
+                    particleCount--;
+                    updateParticleCount();
+                }, duration * 1000);
+            }
+        }
+        
+        // Criar caractere caindo
+        function createFallingChar() {
+            const cloudPos = getCloudPosition();
+            if (cloudPos.width === 0) return;
+            
+            const falling = document.createElement('div');
+            falling.className = 'falling-char';
+            
+            const char = getRandomChar();
+            falling.textContent = char;
+            
+            // Posição X aleatória dentro da nuvem
+            const randomX = cloudPos.left + (Math.random() * cloudPos.width);
+            falling.style.left = randomX + 'px';
+            falling.style.top = cloudPos.bottom - 10 + 'px';
+            
+            // Estilo do caractere
+            const size = Math.floor(Math.random() * 14) + 18;
+            falling.style.fontSize = size + 'px';
+            
+            // Cores diferentes para números e letras
+            if (char >= '0' && char <= '9') {
+                falling.style.color = '#00ced1';
+            } else {
+                falling.style.color = '#7b68ee';
+            }
+            
+            // Velocidade de queda aleatória
+            const duration = Math.random() * 1.2 + 1;
+            falling.style.animationDuration = duration + 's';
+            
+            document.querySelector('.container').appendChild(falling);
+            fallingCount++;
+            updateFallingCount();
+            
+            // Verificar quando atinge o chão
+            const checkInterval = setInterval(() => {
+                const currentTop = parseFloat(falling.style.top);
+                if (currentTop >= window.innerHeight - 40) {
+                    clearInterval(checkInterval);
+                    
+                    // Criar partículas no ponto de impacto
+                    const impactX = parseFloat(falling.style.left);
+                    const impactY = window.innerHeight - 35;
+                    createParticles(impactX, impactY, char);
+                }
+            }, 50);
+            
+            // Remover após a animação
+            falling.addEventListener('animationend', () => {
+                clearInterval(checkInterval);
+                falling.remove();
+                fallingCount--;
+                updateFallingCount();
+            });
+        }
+        
+        // Atualizar contadores
+        function updateFallingCount() {
+            document.getElementById('fallingCount').textContent = fallingCount;
+        }
+        
+        function updateParticleCount() {
+            document.getElementById('particleCount').textContent = particleCount;
+        }
+        
+        // Limpar todas as partículas
+        function clearParticles() {
+            const particles = document.querySelectorAll('.particle');
+            particles.forEach(particle => particle.remove());
+            particleCount = 0;
+            updateParticleCount();
+        }
+        
+        // Iniciar chuva
+        function startRain() {
+            if (rainInterval) return;
+            rainInterval = setInterval(() => {
+                if (isRaining) {
+                    // Criar entre 2 e 4 caracteres por vez
+                    const dropsPerBatch = Math.floor(Math.random() * 3) + 2;
+                    for (let i = 0; i < dropsPerBatch; i++) {
+                        setTimeout(() => createFallingChar(), i * 100);
+                    }
+                }
+            }, 350);
+        }
+        
+        // Parar chuva
+        function stopRain() {
+            if (rainInterval) {
+                clearInterval(rainInterval);
+                rainInterval = null;
+            }
+        }
+        
+        // Alternar chuva
+        function toggleRain() {
+            isRaining = !isRaining;
+            const button = document.getElementById('toggleRain');
+            if (isRaining) {
+                button.innerHTML = '⏸️ Pausar';
+                startRain();
+            } else {
+                button.innerHTML = '▶️ Iniciar';
+                stopRain();
+            }
+        }
+        
+        // Event listeners
+        document.getElementById('toggleRain').addEventListener('click', toggleRain);
+        document.getElementById('clearParticles').addEventListener('click', clearParticles);
+        
+        // Redimensionamento
+        window.addEventListener('resize', () => {
+            const falling = document.querySelectorAll('.falling-char');
+            falling.forEach(item => {
+                const left = parseFloat(item.style.left);
+                if (left > window.innerWidth) {
+                    item.style.left = window.innerWidth - 30 + 'px';
+                }
+            });
+        });
+        
+        // Iniciar a chuva
+        startRain();
+        
+        console.log('☁️ Nuvem Branca - Chuva de Números e Letras 🌧️');
+        console.log('✨ Os caracteres caem e criam partículas no chão!');
+        console.log('💫 Aproveite o show de luzes!');
+    </script>
+</body>
+</html>
